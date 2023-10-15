@@ -1,91 +1,131 @@
 import React, { Component } from "react";
+import axios from "axios";
+import Modal from "./Modal.jsx";
 
 class ContactTable extends Component {
   constructor() {
     super();
     this.state = {
       data: [],
-      hidePopUp: true,
+      modal: false,
+      operation: 0,
+      contact: {},
+      edit: false,
+      person: null,
+      id: -1,
     };
-
-    this.popUpActs = this.popUpActs.bind(this);
+    this.getUsers = this.getUsers.bind(this);
+    this.showModal = this.showModal.bind(this);
   }
 
-  popUpActs(action) {
-    if (action === "add") {
-      this.setState({
-        hidePopUp: false,
+  getUsers() {
+    axios
+      .get("http://localhost/ReactContactList/ContactListBackendPHP/read.php")
+      .then((response) => {
+        this.setState({
+          data: Object.values(response.data.data),
+        });
+      })
+      .catch((error) => {
+        console.error(error);
       });
-    } else {
-      this.setState({
-        hidePopUp: true,
+  }
+
+  deleteContact(id) {
+    console.log(id);
+    const formData = new FormData();
+    formData.append("id", id);
+
+    axios
+      .post(
+        "http://localhost/ReactContactList/ContactListBackendPHP/delete.php",
+        formData
+      )
+      .then(() => {
+        this.getUsers();
       });
-    }
   }
 
   componentDidMount() {
-    var self = this;
-    var contactsData;
-    var xhttp = new XMLHttpRequest();
+    this.getUsers();
+  }
 
-    xhttp.open("GET", "https://doited-error.000webhostapp.com/read.php", true);
-    xhttp.send();
-    xhttp.onreadystatechange = function () {
-      if (this.readyState == 4 && this.status == 200) {
-        contactsData = JSON.parse(this.responseText);
-        var arr = [];
-
-        for (var x = 0; x < contactsData.count; x++) {
-          arr.push(contactsData.data[x]);
-        }
-
-        self.setState({
-          data: arr,
-        });
-      }
-    };
+  showModal(id, edit, person) {
+    this.setState({
+      modal: !this.state.modal,
+      id: id,
+      edit: edit,
+      person: person,
+    });
   }
 
   render() {
     return (
       <>
-        <div className="header-container">
-          <div className="contact-h1-container">
-            <h1>Contacts</h1>
+        <div id="contactList">
+          <div className="header-container">
+            <div className="contact-h1-container">
+              <h1>Contacts</h1>
+            </div>
+            <div className="button-container">
+              <button onClick={() => this.showModal(-1, false, null)}>
+                Add Contact
+              </button>
+            </div>
           </div>
-          <div className="button-container">
-            <button id="add-contact-button" onClick={this.props.openModal}>
-              Add Contact
-            </button>
-          </div>
-        </div>
-        <table id="contact-table">
-          <thead>
-            <tr>
-              <th>First Name</th>
-              <th>Last Name</th>
-              <th>Email Address</th>
-              <th>Contact Number</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {this.state.contacts.map((item) => {
-              return (
-                <tr key={item.id}>
+          <table id="contactTable" border="1">
+            <thead>
+              <tr>
+                <th>First Name</th>
+                <th>Last Name</th>
+                <th>Email Address</th>
+                <th>Contact Number</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {this.state.data.map((item, index) => (
+                <tr key={index}>
                   <td>{item.firstName}</td>
                   <td>{item.lastName}</td>
                   <td>{item.email}</td>
-                  <td>{item.contactNumber}</td>
+                  <td>{item.number}</td>
                   <td>
-                    <button>Edit</button>
-                    <button>Delete</button>
+                    <button
+                      style={{ backgroundColor: "green" }}
+                      className="actionButtons"
+                      onClick={() => {
+                        this.showModal(item.id, true, item);
+                        this.ref.getCurrUser(item);
+                      }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      style={{ backgroundColor: "red", marginLeft: "5px" }}
+                      className="actionButtons"
+                      onClick={() => this.deleteContact(item.id)}
+                    >
+                      Delete
+                    </button>
                   </td>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <Modal
+            onClose={this.showModal}
+            modal={this.state.modal}
+            edit={this.state.edit}
+            id={this.state.id}
+            person={this.state.person}
+            getUsers={this.getUsers}
+            ref={(ref) => (this.ref = ref)}
+            runFunction={true}
+          ></Modal>
+        </div>
       </>
     );
   }
